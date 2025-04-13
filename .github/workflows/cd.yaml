@@ -1,18 +1,44 @@
 name: CD
-
 on:
   workflow_dispatch:
-    - "main"
-
 jobs:
-  build:
+  deploy:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-
-
     steps:
-      - name: Deploy to VPS via SSH
+      - name: 🧾 Checkout Repo
+        uses: actions/checkout@v4
+      - name: 📦 Install Dependencies
+        run: npm install
+      - name: 🛠️ Build React App
+        run: npm run build
+      - name: 🚚 SCP Build Folder to VPS Temp Location
         uses: appleboy/scp-action@v0.1.7
-        with: 
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_PRIVATE_KEY }}
+        with:
+          host: ${{ secrets.AZURE_VM_IP }}
+          username: azureuser
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          source: "build/*"
+          target: "/tmp/react-build"
+      - name: 🚀 Deploy Build to Nginx Directory
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.AZURE_VM_IP }}
+          username: azureuser
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            echo "📁 Checking /var/www/react-app existence..."
+            if [ ! -d /var/www/react-app ]; then
+              echo "📂 Creating /var/www/react-app..."
+              sudo mkdir -p /var/www/react-app
+              sudo chown azureuser:azureuser /var/www/react-app
+            fi
+            echo "🧹 Cleaning old build..."
+            sudo rm -rf /var/www/react-app/*
+            echo "📦 Moving new build to /var/www/react-app..."
+            sudo mv /tmp/react-build/* /var/www/react-app/
+            echo "✅ Build deployed to /var/www/react-app"
+            echo "🔁 Reloading Nginx (if needed)..."
+            sudo systemctl reload nginx || echo "⚠️ Nginx reload failed or not required"

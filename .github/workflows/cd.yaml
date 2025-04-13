@@ -19,6 +19,7 @@ jobs:
           username: azureuser
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
+          strip_components: 1
           source: "build/*"
           target: "/tmp/react-build"
       - name: 🚀 Deploy Build to Nginx Directory

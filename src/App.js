@@ -15,7 +15,7 @@ function App() {
           target="_blank"
           rel="noopener noreferrer"
         >
-          Band App
+          Band Tape
         </a>
       </header>
     </div>
